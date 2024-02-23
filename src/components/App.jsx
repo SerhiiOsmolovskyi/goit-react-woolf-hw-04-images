@@ -1,5 +1,3 @@
-import React, { Component } from 'react';
-
 import { Searchbar } from './Searchbar/Searchbar';
 import { ImageGallery } from './ImageGallery/ImageGallery';
 import { Button } from './Button/Button';
@@ -7,81 +5,73 @@ import { Loader } from './Loader/Loader';
 import { Modal } from './Modal/Modal';
 import styles from './App.module.css';
 import { getImages } from './serviseApi/serviceApi';
+import { useEffect, useState } from 'react';
 
-export class App extends Component {
-  state = {
-    images: [],
-    loading: false,
-    page: 1,
-    modalOpen: false,
-    selectedImage: '',
-    query: '',
-    showBtn: false,
+export const App = () => {
+  const [images, setImages] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
+  const [query, setQuery] = useState('');
+  const [showBtn, setShowBtn] = useState(false);
+
+  useEffect(() => {
+    const searchImages = async () => {
+      setLoading(true);
+
+      try {
+        const response = await getImages(query, page);
+        setImages(prevImages => [...prevImages, ...response.hits]);
+        setShowBtn(page < Math.ceil(response.totalHits / 12));
+      } catch (error) {
+        console.error('Error fetching images:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    searchImages();
+  }, [query, page]);
+
+  const handleSearch = newQuery => {
+    setImages([]);
+    setPage(1);
+    setQuery(newQuery);
   };
 
-  handleSearch = (query) => {
-    this.setState({ images: [], page: 1, query, });
-    // this.searchImages();
+  const loadMoreImages = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  searchImages = async () => {
-    this.setState({ loading: true });
-
-    try {
-      const response = await getImages(this.state.query, this.state.page);
-      // console.log(response);
-
-      this.setState((prevState) => ({
-        images: [...prevState.images, ...response.hits],
-        showBtn: this.state.page < Math.ceil(response.totalHits / 12),
-      }));
-    } catch (error) {
-      console.error('Error fetching images:', error);
-    } finally {
-      this.setState({ loading: false });
-    }
-  };
-
-  loadMoreImages = () => {
-    this.setState((prevState) => ({ page: prevState.page + 1 }));
-  };
-
-  openModal = (imageUrl) => {
-    this.setState({ modalOpen: true, selectedImage: imageUrl });
+  const openModal = imageUrl => {
+    setModalOpen(true);
+    setSelectedImage(imageUrl);
     document.body.style.overflow = 'hidden';
   };
 
-  closeModal = () => {
-    this.setState({ modalOpen: false, selectedImage: '' });
+  const closeModal = () => {
+    setModalOpen(false);
+    setSelectedImage('');
     document.body.style.overflow = '';
   };
 
+  const handleOverlayClick = () => {
+    closeModal();
+  };
 
-  componentDidUpdate(prevProps, prevState) {
-    const { query, page } = this.state;
-    if (prevState.query !== query || prevState.page !== page) {
-      try {
-        this.setState({ loading: true });
-        this.searchImages()
-      } catch (error) {
-
-      }
-  
-    }
-  }
-
-    render() {
-      const { images, loading, modalOpen, selectedImage, showBtn } = this.state;
-
-      return (
-        <div className={styles.App}>
-          <Searchbar onSubmit={this.handleSearch} />
-          <ImageGallery images={images} openModal={this.openModal} />
-          {loading && <Loader />}
-          {showBtn && <Button onLoadMore={this.loadMoreImages} hasMore={!loading} />}
-          <Modal isOpen={modalOpen} closeModal={this.closeModal} imageUrl={selectedImage} onOverlayClick={this.handleOverlayClick} />
-        </div>
-      )
-    }
-  }
-
+  return (
+    <div className={styles.App}>
+      <Searchbar onSubmit={handleSearch} />
+      <ImageGallery images={images} openModal={openModal} />
+      {loading && <Loader />}
+      {showBtn && <Button onLoadMore={loadMoreImages} hasMore={!loading} />}
+      <Modal
+        isOpen={modalOpen}
+        closeModal={closeModal}
+        imageUrl={selectedImage}
+        onOverlayClick={handleOverlayClick}
+      />
+    </div>
+  );
+};
