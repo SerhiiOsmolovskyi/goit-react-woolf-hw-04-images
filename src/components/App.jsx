@@ -17,6 +17,7 @@ export const App = () => {
   const [showBtn, setShowBtn] = useState(false);
 
   useEffect(() => {
+    if (!query) return;
     const searchImages = async () => {
       setLoading(true);
 
